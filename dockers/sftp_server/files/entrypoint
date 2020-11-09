@@ -1,0 +1,10 @@
+#!/bin/bash
+read tst <<< $@
+echo ============== "$tst" ===============
+/usr/local/bin/create_user.sh $@
+/etc/init.d/ssh start
+# adduser
+# echo ============ "$@" ===============
+# sshfs -oStrictHostKeyChecking=no fed@178.150.59.84:/ /mnt/sftp -p 2222 
+# /usr/sbin/
+bash

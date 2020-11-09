@@ -1,0 +1,32 @@
+#!/usr/bin/expect -f
+
+set timeout 1
+
+set cmd [lrange $argv 1 end]
+set passphrase [lindex $argv 0]
+# set prompt "#|\$|%|>|\\ $"
+eval spawn $cmd
+
+# send_user "Hello1\n"
+expect {
+	"Overwrite" {send "y\r"}
+# 	"Overwrite" {send_user "\nHello2\n"}
+	
+# 	-re "$prompt" {send_user "prompt!\n"}
+# 	-re "\$ $" {send_user "prompt!"}
+# 	send_user "Hello3\n"
+# 	"Overwrite" {send "y\r"}
+}
+
+# expect "Overwrite" {send_user "\nHHHH\n"}
+# send_user "Hello4\n"
+# expect "Enter" {send_user "Enter phras!"}
+expect "Enter passphrase"
+	send "$passphrase\r"
+# 	send_user "\nHello5\n"
+expect "Enter same passphrase again"
+	send "$passphrase\r"
+
+# expect -re $prompt
+expect eof
+# # interact

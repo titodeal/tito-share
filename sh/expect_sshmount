@@ -1,0 +1,21 @@
+#!/usr/bin/expect -f
+
+# set env(LC_ALL) "C"
+set env(PS2) "shell:"
+set timeout 2
+
+set cmd [lrange $argv 1 end]
+set password [lindex $argv 0]
+
+eval spawn $cmd
+# expect {
+# 	"Are you sure you want to continue connecting" {send "yes\r"}
+# }
+expect "assword" 
+#  	send "321\r"
+	send "$password\r"
+# 	send_user "\npassword done"
+sleep 2
+interact
+# expect "shell:" 
+# expect eof

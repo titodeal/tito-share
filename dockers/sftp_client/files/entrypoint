@@ -1,0 +1,6 @@
+#!/bin/bash
+read tst <<< $@
+echo $tst
+# echo ============ "$@" ===============
+sshfs -oStrictHostKeyChecking=no fed@178.150.59.84:/ /mnt/sftp -p 2222 
+bash
