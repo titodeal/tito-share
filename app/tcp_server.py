@@ -7,7 +7,7 @@ from _lib import socketServer
 PORT = 50101
 
 
-class Server(socketServer.SocketServer):
+class ApiServer(socketServer.SocketServer):
     def handle_clients(self):
         connections = self.get_connections()
         if not connections:
@@ -22,23 +22,23 @@ class Server(socketServer.SocketServer):
 
             data = self.recv_messages(client, timeout=1)
             for msg in data:
-                print(msg)
+                print('=> recieved message: ', msg)
                 if isinstance(msg, dict) and "method" in msg:
                     if msg.get('method') in METHODS:
                         method = msg.get('method')
                         args = (msg.get('args'))
                         exit_code = METHODS.get(method)(*args)
-                        self.send_data(client, exit_code)
-#             print("received data is: ", data)
-#             self.send_data(client, data)
-#             self.send_data(client, "Hello I am SERVER")
-            self.close_client(client)
+                        self.send_data(client, exit_code, last=True)
+#                         self.send_data(client, '__END_OF_MESSAGE__')
+#             self.close_client(client)
             print("=> End processing clinet: ", addr)
 
 
 def mount_fs(catalog, user, passwd, ip, port):
 
-    print("----------I am Muont!")
+    print(" ======== muont method!")
+#     return 0
+    return 'Mnt complete!'
     try:
         subprocess.run(["grep", f"^{user}:", "/etc/passwd"],
                         check=True)
@@ -119,6 +119,8 @@ mountpoint:{mountpoint}\n")
     return "MOUNT COMPLETE!"
 
 def umount_fs(catalog):
+    print(' ===== umaount method!')
+    return 'Umnt complete!'
     cmd_umnt_point = f"mount -l -t fuse.sshfs | \
 grep {catalog} | cut --delimiter=' ' --fields=3" 
     print("Umount cmd is: ", cmd_umnt_point)
@@ -139,6 +141,8 @@ grep {catalog} | cut --delimiter=' ' --fields=3"
 
 METHODS = {'mount_fs': mount_fs, 'umount_fs': umount_fs}
 
-server = Server(port=PORT, timeout=1, backlog=1)
-server.start_server()
+with ApiServer(port=PORT, timeout=1, backlog=1) as api_server:
+    api_server.start_server()
+# server = Server(port=PORT, timeout=1, backlog=1)
+# server.start_server()
 

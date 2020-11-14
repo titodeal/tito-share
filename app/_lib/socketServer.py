@@ -1,7 +1,7 @@
 import socket
 import json
 
-# Socket serever
+
 class SocketServer():
     def __init__(self, family=socket.AF_INET, type_proto=socket.SOCK_STREAM,
                  port=9090, backlog=5, timeout=None):
@@ -10,36 +10,39 @@ class SocketServer():
         self.backlog = backlog
         self.connections = []
         self.timeout = timeout
-        self.__book_port__()
+        self._book_port()
 
-    def __exception_wrapper(func):
-        def wrapper(self, *args, **kwargs):
-            try:
-                func(self, *args, **kwargs)
-            except Exception:
-                self.sock.close()
-                for client, addr in self.connections:
-                    print("= Closing client socket: ", addr)
-                    client.close()
-                print("=> Closing server socket")
-                raise
-        return wrapper
+    def __enter__(self):
+        return self
 
-    def __book_port__(self):
+    def __exit__(self, exc_type, exc_value, exc_tracebach):
+        if exc_type:
+            print('=> (Exceptioin occured: {})'.format(exc_type))
+        self._close_server()
+
+    def _close_server(self):
+        for client, addr in self.connections:
+            print("= Closing client socket: ", addr)
+            client.close()
+        print("=> Closing server socket")
+        self.sock.close()
+
+    def _book_port(self):
         print(f"=> Binding '{self.port}' port")
         self.sock.bind(('', self.port))
         print(f"=> Port '{self.port}' booked successfully")
         self.sock.listen(self.backlog)
         self.sock.settimeout(self.timeout)
 
-    @__exception_wrapper
     def start_server(self):
         print("=> Start listening")
         while True:
             try:
                 self.connections.append(self.sock.accept())
             except KeyboardInterrupt:
-                self.sock.close()
+                pass
+#                 self._close_server()
+
                 break
             except socket.timeout:
                 self.handle_clients()
@@ -55,9 +58,8 @@ class SocketServer():
                 updated_connections.append(connection)
         self.connections = updated_connections
 
-    @__exception_wrapper
     def handle_clients(self):
-        raise KeyboardInterrupt
+        raise NotImplementedError
 
     def get_connections(self):
         return self.connections
@@ -76,11 +78,22 @@ class SocketServer():
         print("=> Start receiving messages")
         client.settimeout(timeout)
         messages = []
-        while True:
-            data = self.receive_data(client, buffer_size)
-            if not data:
+        catch_message = True
+        while catch_message:
+            message, EOFrame = self.receive_data(client, buffer_size)
+
+            if not message:
                 break
-            messages.append(data)
+            elif message == '__CLOSEREQUEST__':
+                self.close_client(client)
+                break
+            elif EOFrame == "<:IS_LAST:TRUE:>":
+                catch_message = False
+            messages.append(message)
+            print('Received message is: ', message)
+
+
+
         return messages
 
     def receive_data(self, client, buffer_size):
@@ -89,7 +102,7 @@ class SocketServer():
             head_datasize = int.from_bytes(client.recv(2), 'little')
             print("=> Data to received size is: ", head_datasize)
         except (socket.timeout, BlockingIOError):
-            return
+            return None, None
 
         packets_count = int(head_datasize/buffer_size)
         if packets_count == 0:
@@ -109,7 +122,7 @@ class SocketServer():
 
         if not received_data:
             print("=> No data")
-            return
+            return None, None
 
         if len(received_data) != head_datasize:
             print("--=> Error data transfer: the size does not mach")
@@ -118,13 +131,22 @@ class SocketServer():
             raise ValueError("--=> Error data transfer: the size does not mach")
 
         print("=> Successful data transfer. Size is: ", len(received_data))
-        message = json.loads(received_data.decode())
-        return message
+        data = received_data.decode()
+        EOFrame = data[data.index('<:IS_LAST:'):]
+        print('=> EOFrame ', EOFrame)
+        message = data[:data.index('<:IS_LAST:')]
+#         message = json.loads(received_data.decode())
+        message = json.loads(message)
+        return message, EOFrame
 
-    def send_data(self, client, data):
+    def send_data(self, client, data, last=False):
         print('=> Start sending data')
+        print('Data = ', data)
 
-        data = json.dumps(data).encode()
+        is_last = "<:IS_LAST:TRUE:>" if last else "<:IS_LAST:FALSE:>"
+
+        data = json.dumps(data) + is_last
+        data = data.encode()
         data_size = len(data)
         head_datasize = data_size.to_bytes(2, "little")
         print('=> Data to send size is: ', data_size)
@@ -138,9 +160,4 @@ class SocketServer():
         else:
             print("=> Finish sending data")
 
-    def fs_mount(self):
-        print("=> mounting")
 
-    def fs_unmount(sefl):
-
-        print("=> umounting")

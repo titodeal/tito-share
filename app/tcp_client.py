@@ -20,10 +20,10 @@ from _lib import socketClient
 # ip and port (config). 
 # main folders (config).
 
-CATALOGS = ["/home/Development/titoshare/app/prod_projects/Prj3",
-            "/home/Development/titoshare/app/prod_projects/Prj2"]
+# CATALOGS = ["/home/Development/titoshare/app/prod_projects/Prj3",
+#             "/home/Development/titoshare/app/prod_projects/Prj2"]
 
-CATALOGS = "/home/fed/Development/titoshare/app/prod_projects"
+CATALOGS = "/home/fed/prod_projects"
 
 # IP_STORAGE = "178.150.59.84"
 # PORT_STORAGE = 2222
@@ -32,26 +32,37 @@ PORT_STORAGE = 22
 OWNER = "utes"
 
 # IP_SERVER = "178.150.59.84" # "localhost"
-# IP_SERVER = "192.168.88.202"
-IP_SERVER = "192.168.88.174"
+IP_SERVER = "192.168.88.202"
+# IP_SERVER = "192.168.88.174"
 PORT_SERVER = 50101
-    
+
+
 class Api:
-    def __init__(self):
-        self.connection = socketClient.SocketClient(host=IP_SERVER,
-                                                    port=PORT_SERVER,
-                                                    timeout=None)
+    def __init__(self, host=IP_SERVER, port=PORT_SERVER, timeout=None):
+        self.connection = socketClient.SocketClient(host=host,
+                                                    port=port,
+                                                    timeout=timeout)
+        self.connection.set_connection()
+
+    def close_connection(self):
+        self.connection.close_connection()
 
     def umount_fs(self, catalog):
 
         message = {"method": "umount_fs",
                    "args": [f"{catalog}"]}
-        self.connection.set_connection()
+#         self.connection.set_connection()
         self.connection.send_data(message)
         answer = self.connection.recv_messages()
         print("Answer is", answer)
-        self.connection.close_connection()
+#         self.connection.close_connection()
         
+    def __enter__(self):
+        return self
+
+    def __exit__(self):
+        self.close_connection()
+
     def mount_fs(self, catalog, owner, passwd, ip, port):
         if not ssh_ready():
             return
@@ -63,11 +74,11 @@ class Api:
                    "args": [f"{catalog}", f"{owner}", f"{passwd}",
                             f"{ip}", f"{port}"]}
 
-        self.connection.set_connection()
+#         self.connection.set_connection()
         self.connection.send_data(message)
         answer = self.connection.recv_messages()
         print("Answer is", answer)
-        self.connection.close_connection()
+#         self.connection.close_connection()
 
 
 def permission_ready(catalog, user):
@@ -122,7 +133,8 @@ def config_ready():
     pass
 
 # api = Api()
-# api.mount_fs(CATALOGS, OWNER, "321", IP_STORAGE, PORT_STORAGE)
-api = Api()
+api = Api(timeout=3)
+api.mount_fs(CATALOGS, OWNER, "321", IP_STORAGE, PORT_STORAGE)
 api.umount_fs(CATALOGS)
+api.close_connection()
 

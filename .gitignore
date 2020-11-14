@@ -1,3 +1,5 @@
+.gitignore
+.project
 *__pycache__
 *.pyc
-
+*.swp
