@@ -37,6 +37,17 @@ IP_SERVER = "192.168.88.202"
 PORT_SERVER = 50101
 
 
+def benchmark(func):
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        func(*args, *kwargs)
+        print("***Function name: {}\nDuration: {}".format(func.__name__,
+                                                          time.time() - start))
+    return wrapper
+
+class ServerError(BaseException):
+    pass
+
 class Api:
     def __init__(self, host=IP_SERVER, port=PORT_SERVER, timeout=None):
         self.connection = socketClient.SocketClient(host=host,
@@ -47,38 +58,42 @@ class Api:
     def close_connection(self):
         self.connection.close_connection()
 
+    @benchmark
     def umount_fs(self, catalog):
 
         message = {"method": "umount_fs",
                    "args": [f"{catalog}"]}
-#         self.connection.set_connection()
         self.connection.send_data(message)
         answer = self.connection.recv_messages()
+        if answer is not True:
+            self.close_connection()
+            raise ServerError('Error in server occured:\n{}'.format(answer))
         print("Answer is", answer)
-#         self.connection.close_connection()
-        
+
     def __enter__(self):
         return self
 
     def __exit__(self):
         self.close_connection()
 
+    @benchmark
     def mount_fs(self, catalog, owner, passwd, ip, port):
         if not ssh_ready():
             return
 
         if not permission_ready(CATALOGS, OWNER):
             return
-  
+
         message = {"method": "mount_fs",
                    "args": [f"{catalog}", f"{owner}", f"{passwd}",
                             f"{ip}", f"{port}"]}
 
-#         self.connection.set_connection()
         self.connection.send_data(message)
         answer = self.connection.recv_messages()
+        if answer is not True:
+            self.close_connection()
+            raise ServerError('Error in server occured:\n{}'.format(answer))
         print("Answer is", answer)
-#         self.connection.close_connection()
 
 
 def permission_ready(catalog, user):
@@ -111,7 +126,6 @@ def permission_ready(catalog, user):
 
     return True
 
-    
 def ssh_ready():
     try:
         ssh = subprocess.run(["ssh", "-V"], check=True)
@@ -133,8 +147,10 @@ def config_ready():
     pass
 
 # api = Api()
-api = Api(timeout=3)
-api.mount_fs(CATALOGS, OWNER, "321", IP_STORAGE, PORT_STORAGE)
+api = Api(timeout=5)
+# api.mount_fs(CATALOGS, OWNER, "321", IP_STORAGE, PORT_STORAGE)
 api.umount_fs(CATALOGS)
+# api.mount_fs(CATALOGS, OWNER, "321", IP_STORAGE, PORT_STORAGE)
+# api.umount_fs(CATALOGS)
 api.close_connection()
 

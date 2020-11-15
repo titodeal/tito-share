@@ -17,15 +17,22 @@ class SocketServer():
 
     def __exit__(self, exc_type, exc_value, exc_tracebach):
         if exc_type:
-            print('=> (Exceptioin occured: {})'.format(exc_type))
-        self._close_server()
+            print('=> Exceptioin occured: {}'.format(exc_type))
+        self._finish_server_proces()
 
-    def _close_server(self):
-        for client, addr in self.connections:
-            print("= Closing client socket: ", addr)
+    def _finish_server_proces(self):
+        for client  in self.connections:
+            print("= Closing client socket: ", client.getpeername())
             client.close()
         print("=> Closing server socket")
         self.sock.close()
+
+    def _clean_failure(self):
+        updated_connections = []
+        for client in self.connections:
+            if not client.fileno() == -1:
+                updated_connections.append(client)
+        self.connections = updated_connections
 
     def _book_port(self):
         print(f"=> Binding '{self.port}' port")
@@ -33,30 +40,20 @@ class SocketServer():
         print(f"=> Port '{self.port}' booked successfully")
         self.sock.listen(self.backlog)
         self.sock.settimeout(self.timeout)
+#         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
 
     def start_server(self):
         print("=> Start listening")
         while True:
             try:
-                self.connections.append(self.sock.accept())
+                self.connections.append(self.sock.accept()[0])
             except KeyboardInterrupt:
-                pass
-#                 self._close_server()
-
                 break
-            except socket.timeout:
+            except (socket.timeout, BlockingIOError):
                 self.handle_clients()
                 self._clean_failure()
             else:
                 pass
-
-    def _clean_failure(self):
-        updated_connections = []
-        for connection in self.connections:
-            client = connection[0]
-            if not client.fileno() == -1:
-                updated_connections.append(connection)
-        self.connections = updated_connections
 
     def handle_clients(self):
         raise NotImplementedError
@@ -64,10 +61,12 @@ class SocketServer():
     def get_connections(self):
         return self.connections
 
-#     def get_data(self, client, buffer_size=64):
-#         return self.get_messages(client, buffer_size
-
     def close_client(self, client):
+        try:
+            self.connections.pop(self.connections.index(client))
+        except ValueError:
+            print('=> Client {} not found in connections list'.format(client.getpeername()))
+
         try:
             print("=> Closing socket: {}".format(client.getpeername()))
             client.close()
@@ -77,43 +76,26 @@ class SocketServer():
     def recv_messages(self, client, buffer_size=64, timeout=None):
         print("=> Start receiving messages")
         client.settimeout(timeout)
-        messages = []
-        catch_message = True
-        while catch_message:
-            message, EOFrame = self.receive_data(client, buffer_size)
 
-            if not message:
-                break
-            elif message == '__CLOSEREQUEST__':
-                self.close_client(client)
-                break
-            elif EOFrame == "<:IS_LAST:TRUE:>":
-                catch_message = False
-            messages.append(message)
-            print('Received message is: ', message)
-
-
-
-        return messages
+        message = self.receive_data(client, buffer_size)
+        if message == "CLOSECONNREQUEST":
+            self.close_client(client)
+            return
+        return message
 
     def receive_data(self, client, buffer_size):
-        print("=> Cecking receive data")
+        print("=> Checking receive data")
         try:
             head_datasize = int.from_bytes(client.recv(2), 'little')
             print("=> Data to received size is: ", head_datasize)
-        except (socket.timeout, BlockingIOError):
-            return None, None
+        except (socket.timeout, BlockingIOError) as e:
+            return None
 
         packets_count = int(head_datasize/buffer_size)
         if packets_count == 0:
             tail_size = head_datasize
         else:
             tail_size = head_datasize % buffer_size
-#         if packets_count < 1:
-#             packets_count = 0
-#             tail_size = head_datasize
-#         else:
-#             tail_size = head_datasize % buffer_size
 
         received_data = b""
         for pack in range(packets_count):
@@ -122,7 +104,7 @@ class SocketServer():
 
         if not received_data:
             print("=> No data")
-            return None, None
+            return None
 
         if len(received_data) != head_datasize:
             print("--=> Error data transfer: the size does not mach")
@@ -131,21 +113,14 @@ class SocketServer():
             raise ValueError("--=> Error data transfer: the size does not mach")
 
         print("=> Successful data transfer. Size is: ", len(received_data))
-        data = received_data.decode()
-        EOFrame = data[data.index('<:IS_LAST:'):]
-        print('=> EOFrame ', EOFrame)
-        message = data[:data.index('<:IS_LAST:')]
-#         message = json.loads(received_data.decode())
-        message = json.loads(message)
-        return message, EOFrame
+        message = json.loads(received_data.decode())
+        return message
 
-    def send_data(self, client, data, last=False):
+    def send_data(self, client, data):
         print('=> Start sending data')
         print('Data = ', data)
 
-        is_last = "<:IS_LAST:TRUE:>" if last else "<:IS_LAST:FALSE:>"
-
-        data = json.dumps(data) + is_last
+        data = json.dumps(data)
         data = data.encode()
         data_size = len(data)
         head_datasize = data_size.to_bytes(2, "little")
@@ -159,5 +134,3 @@ class SocketServer():
             return
         else:
             print("=> Finish sending data")
-
-
