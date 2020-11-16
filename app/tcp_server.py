@@ -135,29 +135,54 @@ class ApiServer(socketServer.SocketServer):
     def umount_fs(catalog):
 
         cmd_umnt_point = f"mount -l -t fuse.sshfs | \
-            grep {catalog} | cut --delimiter=' ' --fields=3"
+grep {catalog} | cut --delimiter=' ' --fields=3"
         print("Umount cmd is: ", cmd_umnt_point)
         umnt_point_proc = subprocess.Popen(cmd_umnt_point,
                                            stdout=subprocess.PIPE, shell=True)
         umnt_point = umnt_point_proc.stdout.readline()
+
+        if not umnt_point:
+            error_msg = \
+                "Error umount: Mount point '{}' not found."\
+                .format(catalog)
+            print(error_msg)
+            return error_msg
+
         umnt_point = umnt_point.decode().strip()
         print("Umount point is: ", umnt_point)
 
         umount_cmd = ["umount", f"{umnt_point}"]
-        umount_proc = subprocess.run(umount_cmd)
+        umount_proc = subprocess.run(umount_cmd, stderr=subprocess.PIPE)
 
+        print(umount_cmd)
         if umount_proc.returncode != 0:
-            error_msg = f"Error umount catalog: {catalog}"
+            error_msg = "Error umount: {} {} \
+                        ".format(catalog, umount_proc.stderr)
             print('!=>', error_msg)
             return error_msg
         print(f"=> Umount catalog successful {catalog}")
+        return True
+
+    @staticmethod
+    def share_catalog(catalog, user, passwd):
+        """append the share catalog for user docker container"""
+        args = ["./sh/sftp_server/build.sh", user, passwd, catalog]
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        outputs, error =  proc.communicate()
+        print("output process: ", outputs.decode())
+        print("error process: ", error.decode())
+
+        if proc.returncode != 0:
+            msg = "Share error: {}".format(proc.stderr)
+            print(msg)
+            return(msg)
+        else:
+            msg = "Successful share"
+            print(msg)
 
         return True
 
-# METHODS = {'mount_fs': mount_fs, 'umount_fs': umount_fs}
 
 with ApiServer(port=PORT, timeout=0.05, backlog=5) as api_server:
     api_server.start_server()
-# server = Server(port=PORT, timeout=1, backlog=1)
-# server.start_server()
 

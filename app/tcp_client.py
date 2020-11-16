@@ -96,6 +96,19 @@ class Api:
         print("Answer is", answer)
 
 
+    def share_catalog(self, catalog, user, passwd):
+        """append the share catalog for user docker container"""
+        # Check the catalog is availalbe
+        message = {"method": "share_catalog",
+                   "args": [f"{catalog}", f"{user}", f"{passwd}"]}
+
+        self.connection.send_data(message)
+        answer = self.connection.recv_messages()
+        if answer is not True:
+            self.close_connection()
+            raise ServerError('Error in server occured:\n{}'.format(answer))
+        print("Answer is", answer)
+
 def permission_ready(catalog, user):
 
     if not os.path.exists(catalog):
@@ -148,9 +161,7 @@ def config_ready():
 
 # api = Api()
 api = Api(timeout=5)
-# api.mount_fs(CATALOGS, OWNER, "321", IP_STORAGE, PORT_STORAGE)
-api.umount_fs(CATALOGS)
-# api.mount_fs(CATALOGS, OWNER, "321", IP_STORAGE, PORT_STORAGE)
+api.mount_fs(CATALOGS, OWNER, "321", IP_STORAGE, PORT_STORAGE)
 # api.umount_fs(CATALOGS)
+api.share_catalog(f'/home/{OWNER}/prod_pojects/Prj1', 'newuser_01', '123')
 api.close_connection()
-
