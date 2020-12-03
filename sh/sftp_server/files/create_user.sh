@@ -6,7 +6,7 @@ create_user(){
 	if [ -n "$2" ]; then
 # 		pass=$(mkpasswd $2)
 		echo "Creating Password User"
-		useradd -p "$pass" $1
+		useradd -p "$pass" -s "/bin/bash" $1
 		echo "$1:$2" | chpasswd
 	else
 		useradd $1

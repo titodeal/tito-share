@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+from subprocess import PIPE
 from _lib import socketServer
 import time
 
@@ -59,17 +60,36 @@ class ApiServer(socketServer.SocketServer):
         except subprocess.CalledProcessError:
             print(f"=>Start creating user '{user}'")
             user_proc = subprocess.run(
-                f"./create_user.sh {user} {passwd}", shell=True,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            print("Creating user stdout: ",  user_proc.stdout)
+                f"./sh/create_user.sh {user} {passwd}", shell=True,
+                stdout=PIPE, stderr=PIPE)
+            print("Creating user stdout: ",  user_proc.stdout.decode())
             if user_proc.returncode != 0:
                 error_msg = f"Creating user '{user}' fail: " \
-                                            + user_proc.stderr
+                                            + user_proc.stderr.decode()
                 print('!=>', error_msg)
                 return error_msg
             print(f"=> Creating user '{user}' succsessful")
         else:
             print(f"=> User '{user}' already exists.")
+            
+            _id = subprocess.run("grep '^{user}:' /etc/shadow | cut -d : -f 2 | cut -d $ -f 2", shell=True, stdout=PIPE).stdout.decode().strip()
+            _salt = subprocess.run("grep '^{user}:' /etc/shadow | cut -d : -f 2 | cut -d $ -f 3", shell=True, stdout=PIPE).stdout.decode().strip()
+            _hashed = subprocess.run("grep '^{user}:' /etc/shadow | cut -d : -f 2 | cut -d $ -f 4", shell=True, stdout=PIPE).stdout.decode().strip()
+
+            _hash = subprocess.run(f"echo {passwd} | openssl passwd -{_id} -salt {_salt} -stdin | cut -d $ -f 4", shell=True, stdout=PIPE).stdout.decode().strip()
+            print("=> Checking user password")
+            if _hashed != _hash:
+                err_msg = "!=> Incorect user password"
+                print(err_msg)
+                return err_msg
+
+            
+        uid_cmd = f'grep -E "^{user}:" /etc/passwd | cut -d : -f 3'
+        pr_uid = subprocess.run(uid_cmd, shell=True, stdout=PIPE)
+        if pr_uid.returncode != 0:
+            print("!=> The user\'s '{user}' uid not found")
+        else:
+            uid = pr_uid.stdout.decode().strip()
 
         # Check and process home user path. If path not exists creates it.
         if not os.path.exists(f"/home/{user}"):
@@ -84,7 +104,7 @@ class ApiServer(socketServer.SocketServer):
             os.mkdir(ssh_catalog, mode=0o750)
             key_file = "/".join([ssh_catalog, "id_rsa"])
             passphrase = "ComCliServPhrase"
-            keygen_args = ["./expect_sshkeygen", f"{passphrase}",
+            keygen_args = ["./sh/expect_sshkeygen", f"{passphrase}",
                            "ssh-keygen", "-f", f"{key_file}"]
             keygen_proc = subprocess.run(keygen_args)
             keygen_returncode = keygen_proc.returncode
@@ -102,6 +122,10 @@ class ApiServer(socketServer.SocketServer):
             import shutil
             os.mkdir(mountpoint)
             shutil.chown(mountpoint, user=user, group=user)
+            print(f"=> The mountpoint folder '{mountpoint}' has been created\n \
+                    owner is: {user}")
+            print(f"=> Owner ID is: {os.stat(mountpoint).st_uid}")
+
 
         print(f"Mount argumetns:\n \
     user:{user},\n \
@@ -113,22 +137,30 @@ class ApiServer(socketServer.SocketServer):
     #                  "sshfs", "-oStrictHostKeyChecking=no",
     #                  f"{user}@{ip}:{catalog}", f"{mountpoint}",
     #                  "-p" f"{port}", "-o", "reconnect"]
-        sshfs_cmd = ["sshfs", "-oStrictHostKeyChecking=no,password_stdin",
+        sshfs_cmd = ["sshfs", "-ononempty", "-oServerAliveCountMax=0", "-oallow_other", "-oStrictHostKeyChecking=no,password_stdin", f"-ouid={uid}", f"-ogid={uid}",
                      f"{user}@{ip}:{catalog}", f"{mountpoint}",
                      "-p", f"{port}"]
         print("command: ", sshfs_cmd)
+        print(f"=> Owner ID is: {os.stat(mountpoint).st_uid}")
         try:
-            sshfs_mount = subprocess.Popen(sshfs_cmd, stdin=subprocess.PIPE)
+            sshfs_mount = subprocess.Popen(sshfs_cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
             sshfs_mount.communicate(input=f"{passwd}".encode())
+            outs, errs = sshfs_mount.communicate()
     #         sshfs_mount = subprocess.run(sshfs_cmd)
-    #                                 stdout=subprocess.PIPE,
-    #                                 stderr=subprocess.PIPE)
+    #                                 stdout=PIPE,
+    #                                 stderr=PIPE)
     #         
+            if sshfs_mount.returncode != 0:
+                print("Mounting Error: ", errs.decode())
+                return errs.decode()
+    #        print("RETURN CODE IS: ", sshfs_mount.returncode)
+    #        print("Mounting Error: ", outs)
         except subprocess.CalledProcessError as err:
-            print("Mounting Error: ", sshfs_mount.stderr)
+            print("Mounting Error: ", errs.decode())
         else:
-            print("Mounting successful", sshfs_mount.stdout)
+            print("Mounting successful", outs.decode())
 
+        print(f"=> Owner ID is: {os.stat(mountpoint).st_uid}")
         return True
 
     @staticmethod
@@ -138,7 +170,7 @@ class ApiServer(socketServer.SocketServer):
 grep {catalog} | cut --delimiter=' ' --fields=3"
         print("Umount cmd is: ", cmd_umnt_point)
         umnt_point_proc = subprocess.Popen(cmd_umnt_point,
-                                           stdout=subprocess.PIPE, shell=True)
+                                           stdout=PIPE, shell=True)
         umnt_point = umnt_point_proc.stdout.readline()
 
         if not umnt_point:
@@ -152,7 +184,7 @@ grep {catalog} | cut --delimiter=' ' --fields=3"
         print("Umount point is: ", umnt_point)
 
         umount_cmd = ["umount", f"{umnt_point}"]
-        umount_proc = subprocess.run(umount_cmd, stderr=subprocess.PIPE)
+        umount_proc = subprocess.run(umount_cmd, stderr=PIPE)
 
         print(umount_cmd)
         if umount_proc.returncode != 0:
@@ -167,8 +199,9 @@ grep {catalog} | cut --delimiter=' ' --fields=3"
     def share_catalog(catalog, user, passwd):
         """append the share catalog for user docker container"""
         args = ["./sh/sftp_server/build.sh", user, passwd, catalog]
-        proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.Popen(args, stdout=PIPE, stderr=PIPE)
         outputs, error =  proc.communicate()
+        print("=========SHARE====================")
         print("output process: ", outputs.decode())
         print("error process: ", error.decode())
 
