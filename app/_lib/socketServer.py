@@ -17,7 +17,7 @@ class SocketServer():
 
     def __exit__(self, exc_type, exc_value, exc_tracebach):
         if exc_type:
-            print('=> Exceptioin occured: {}'.format(exc_type))
+            print('!=> Exceptioin occured: {}'.format(exc_type))
         self._finish_server_proces()
 
     def _finish_server_proces(self):
