@@ -27,12 +27,13 @@ CATALOGS = "/home/fed/prod_projects"
 
 # IP_STORAGE = "178.150.59.84"
 # PORT_STORAGE = 2222
-IP_STORAGE = "192.168.88.202"
+IP_STORAGE = "192.168.88.163"
 PORT_STORAGE = 22
 OWNER = "utes"
 
 # IP_SERVER = "178.150.59.84" # "localhost"
-IP_SERVER = "192.168.88.202"
+# IP_SERVER = "192.168.88.202"
+IP_SERVER = "192.168.88.167"
 # IP_SERVER = "192.168.88.174"
 PORT_SERVER = 50101
 
@@ -81,7 +82,7 @@ class Api:
         if not ssh_ready():
             return
 
-        if not permission_ready(CATALOGS, OWNER):
+        if not permission_ready(catalog, owner):
             return
 
         message = {"method": "mount_fs",
@@ -151,7 +152,7 @@ def ssh_ready():
         ssh_port = subprocess.run(["nc","-z", IP_STORAGE,
                                    str(PORT_STORAGE)], check=True)
     except subprocess.CalledProcessError as err:
-        print(f"No SSH server at the addres: {IP_STORAGE}:{PORT_STORAGE}")
+        print(f"!=>No SSH server at the addres: {IP_STORAGE}:{PORT_STORAGE}")
         return False
 
     return True
@@ -160,8 +161,9 @@ def config_ready():
     pass
 
 # api = Api()
-api = Api(timeout=5)
-api.mount_fs(CATALOGS, OWNER, "321", IP_STORAGE, PORT_STORAGE)
+api = Api(timeout=35)
+api.mount_fs(CATALOGS, "fed", "321", IP_STORAGE, PORT_STORAGE)
 # api.umount_fs(CATALOGS)
-api.share_catalog(f'/home/{OWNER}/prod_pojects/Prj1', 'newuser_01', '123')
+api.share_catalog(f'/home/fed/prod_projects/Prj1', 'newuser_01', '123')
+# api.share_catalog(f'/home/{OWNER}/newFolder', 'newuser_01', '123')
 api.close_connection()
