@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import os
 import subprocess
@@ -208,7 +208,7 @@ grep {catalog} | cut --delimiter=' ' --fields=3"
         print("error process: ", error.decode())
 
         if proc.returncode != 0:
-            msg = "Share error: {}".format(proc.stderr)
+            msg = "Share error: {}".format(error.decode())
             print(msg)
             return(msg)
         else:
