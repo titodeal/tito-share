@@ -8,7 +8,7 @@ if [[ -n "$1" && -n "$2" && -n "$3" ]]; then
     volume="$3":/home/"$1"/mnt
     echo "volume is: $volume"
 #    docker run -it -p 2222:22 --rm --volume "$volume" --name sftp_server_01 "$TAG" $1 $2
-     docker run -di -p 2222:22 --rm --volume "$volume" --name sftp_server_01 "$TAG" $1 $2
+     docker run -di -p 2222:22 --rm --volume "$volume" --name sftp_"$1" "$TAG" $1 $2
 else
     echo "required 'user', 'password' and 'volume' arguments" >&2
     exit 1
