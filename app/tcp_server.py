@@ -71,7 +71,9 @@ class ApiServer(socketServer.SocketServer):
             print(f"=> Creating user '{user}' succsessful")
         else:
             print(f"=> User '{user}' already exists.")
-            
+
+
+            # Check user password
             _id = subprocess.run("grep '^{user}:' /etc/shadow | cut -d : -f 2 | cut -d $ -f 2", shell=True, stdout=PIPE).stdout.decode().strip()
             _salt = subprocess.run("grep '^{user}:' /etc/shadow | cut -d : -f 2 | cut -d $ -f 3", shell=True, stdout=PIPE).stdout.decode().strip()
             _hashed = subprocess.run("grep '^{user}:' /etc/shadow | cut -d : -f 2 | cut -d $ -f 4", shell=True, stdout=PIPE).stdout.decode().strip()
@@ -83,7 +85,7 @@ class ApiServer(socketServer.SocketServer):
                 print(err_msg)
                 return err_msg
 
-            
+
         uid_cmd = f'grep -E "^{user}:" /etc/passwd | cut -d : -f 3'
         pr_uid = subprocess.run(uid_cmd, shell=True, stdout=PIPE)
         if pr_uid.returncode != 0:

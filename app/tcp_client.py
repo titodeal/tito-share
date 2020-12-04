@@ -4,6 +4,7 @@ import sys
 import os
 import time
 import subprocess
+from subprocess import PIPE
 import json
 
 from _lib import socketClient
@@ -79,6 +80,22 @@ class Api:
 
     @benchmark
     def mount_fs(self, catalog, owner, passwd, ip, port):
+
+        # Check user password
+        _id = subprocess.run(f"grep '^{owner}:' /etc/shadow | cut -d : -f 2 | cut -d $ -f 2", shell=True, stdout=PIPE).stdout.decode().strip()
+        _salt = subprocess.run(f"grep '^{owner}:' /etc/shadow | cut -d : -f 2 | cut -d $ -f 3", shell=True, stdout=PIPE).stdout.decode().strip()
+        _hashed = subprocess.run(f"grep '^{owner}:' /etc/shadow | cut -d : -f 2 | cut -d $ -f 4", shell=True, stdout=PIPE).stdout.decode().strip()
+
+        _hash = subprocess.run(f"echo {passwd} | openssl passwd -{_id} -salt {_salt} -stdin | cut -d $ -f 4", shell=True, stdout=PIPE).stdout.decode().strip()
+
+        if not _hash or not _hashed:
+            print("!=>Checking passwor fail")
+
+        if _hashed != _hash:
+            err_msg = "!=> Incorect user password"
+            print(err_msg)
+            return
+
         if not ssh_ready():
             return
 
@@ -133,7 +150,7 @@ def permission_ready(catalog, user):
         return
 
     cmd = f"stat --printf=%a {catalog}  | cut -c 2"
-    proc_prm =  subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
+    proc_prm =  subprocess.run(cmd, shell=True, stdout=PIPE)
     grp_perm = proc_prm.stdout
     if grp_perm != 7:
         print(f"Catalog group has insufficient permissions: {catalog}")
@@ -162,8 +179,8 @@ def config_ready():
 
 # api = Api()
 api = Api(timeout=35)
-api.mount_fs(CATALOGS, "fed", "321", IP_STORAGE, PORT_STORAGE)
+api.mount_fs(CATALOGS, "fed", "123", IP_STORAGE, PORT_STORAGE)
 # api.umount_fs(CATALOGS)
-api.share_catalog(f'/home/fed/prod_projects/Prj1', 'newuser_01', '123')
+api.share_catalog(f'/home/fed/prod_projects/_DATA', 'newuser_01', '123')
 # api.share_catalog(f'/home/{OWNER}/newFolder', 'newuser_01', '123')
 api.close_connection()
