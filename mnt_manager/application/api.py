@@ -1,67 +1,26 @@
+# import time
 import os
 import subprocess
 from subprocess import PIPE
-from _sockets import socket_server
-import time
 
-import sys
-path = os.path.abspath("..")
+from application import AplicationServer, sshfs_utils, user_util, cmd_util
 
-sys.path.append(path)
-from utils import user_util
-from api import methods
+# def benchmark(func):
+#     def wrapper(*args, **kwargs):
+#         start = time.time()
+#         func(*args, *kwargs)
+#         print("***Function name: {}\nDuration: {}"
+#               "".format(func.__name__, time.time() - start))
+#     return wrapper
 
-
-PORT = 50101
-
-
-def benchmark(func):
-    def wrapper(*args, **kwargs):
-        start = time.time()
-        func(*args, *kwargs)
-        print("***Function name: {}\nDuration: {}".format(func.__name__,
-                                                          time.time() - start))
-    return wrapper
-
-
-class ApiServer(socket_server.SocketServer):
-
-    def handle_clients(self):
-        connections = self.get_connections()
-        if not connections:
-            return
-
-        print("=> Connections count process: ", len(connections))
-
-        for idx, client in enumerate(connections):
-            peername = client.getpeername()
-            print(f"[{idx}] Start processing client:\n{peername}")
-
-            msg = self.recv_messages(client, timeout=0)
-            if not msg:
-                continue
-
-            print('=> recieved message: ', msg)
-            if not (isinstance(msg, dict) and "method" in msg):
-                note = f'Message has wrong format\nMessege is: "{msg}"'
-                print(note)
-                exit_code = note
-            else:
-                try:
-                    method = getattr(self, msg.get('method'))
-                    exit_code = method(*msg.get('args'))
-                except (AttributeError, TypeError) as e:
-                    print(e.__repr__())
-                    exit_code = e.__repr__()
-            self.send_data(client, exit_code)
-
-            print(f"=> End processing clinet: {peername}\n----------------")
+class AplicationApi(AplicationServer):
+    """The class which process client commands"""
 
     @staticmethod
     def mount_fs(mnt_folder, user_name, passwd, ip, port):
         """This method mount file system on the web server."""
 
-        USER_HOMEPATH = f"/home/{user_name}"
+        USER_HOMEPATH = os.path.join(user_util.get_home_path(), f"{user_name}")
 
         # Checking system user
         user_exists, msg = user_util.isuser_exists(user_name)
@@ -87,15 +46,16 @@ class ApiServer(socket_server.SocketServer):
             os.mkdir(USER_HOMEPATH, mode=0o751)
             os.chown(USER_HOMEPATH, user.get('uid'), user.get('gid'))
 
+        # Prepare SSH setup
         sshfolder = "/".join([USER_HOMEPATH, ".ssh"])
-        methods.generate_sshkeys(sshfolder)
+        sshfs_utils.generate_sshkeys(sshfolder)
 
         mnt_point = "/".join([USER_HOMEPATH, "projects"])
-        mount, msg = methods.mount_sshfs(mnt_folder, mnt_point,
-                                         user, passwd, ip, port)
+        mount, msg = sshfs_utils.mount_sshfs(mnt_folder, mnt_point,
+                                             user, passwd, ip, port)
         if not mount:
             err_msg = "!=>Mount error occured: " + msg
-            print("!=>Mount error occured: ", err_msg)
+            print(err_msg)
             return err_msg
 
         print("=>Mount has been complete successful ", msg)
@@ -153,8 +113,3 @@ grep {catalog} | cut --delimiter=' ' --fields=3"
             print(msg)
 
         return True
-# 
-# 
-# with ApiServer(port=PORT, timeout=0.05, backlog=5) as api_server:
-#     api_server.start_server()
-# 

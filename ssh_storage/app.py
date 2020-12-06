@@ -12,6 +12,6 @@ PORT_SERVER = 50101
 api = api_client.Api(host=IP_SERVER, port=PORT_SERVER, timeout=1)
 api.mount_fs(MNT_FOLDER, "fed", "123", IP_SSH, PORT_SSH)
 # api.umount_fs(CATALOGS)
-# api.share_catalog(f'/home/fed/prod_projects/_DATA', 'newuser_01', '123')
+# api.share_catalog(f'/home/fed/projects', 'newuser_01', '123')
 # api.share_catalog(f'/home/{OWNER}/newFolder', 'newuser_01', '123')
 api.close_connection()

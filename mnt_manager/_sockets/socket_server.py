@@ -118,7 +118,7 @@ class SocketServer():
 
     def send_data(self, client, data):
         print('=> Start sending data')
-        print('Data = ', data)
+#         print('Data = ', data)
 
         data = json.dumps(data)
         data = data.encode()

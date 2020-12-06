@@ -2,6 +2,8 @@ import os
 import subprocess
 from subprocess import PIPE
 
+from application import cmd_util
+
 
 def check_sshkeys(sshfolder):
     pass
@@ -29,13 +31,29 @@ def generate_sshkeys(sshfolder):
             print("=> SSH keygen generated successfull")
 
 
+def mnt_point_exists(mnt_folder, user_name, ip):
+    cmd = f"mount | grep -E {user_name}@{ip}:{mnt_folder}"
+
+    code, outs, msg = cmd_util.run_subprocess(cmd)
+    if code == 0:
+        mnt_point = outs[outs.index('on') + 2: outs.index('type')].strip()
+        msg = f"The mount folder '{mnt_folder}' already exists " \
+              f"on the mount point '{mnt_point}'"
+        return True, msg
+    else:
+        return False, None
+
+
 def mount_sshfs(mnt_folder, mnt_point, user, passwd, ip, port):
     """docstrinfnameg for mount_sshfs"""
 
-    print(user)
     user_name = user.get('name')
     uid = user.get('uid')
     gid = user.get('gid')
+
+    mnt_exists, msg = mnt_point_exists(mnt_folder, user_name, ip)
+    if mnt_exists:
+        return False, msg
 
     print(f"Mount argumetns:\n \
     user:{user_name},\n \

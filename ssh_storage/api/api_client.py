@@ -36,7 +36,7 @@ def benchmark(func):
                                                           time.time() - start))
     return wrapper
 
-class servererror(BaseException):
+class ServerError(BaseException):
     pass
 
 
@@ -68,7 +68,7 @@ class Api:
     def __exit__(self):
         self.close_connection()
 
-    @benchmark
+#     @benchmark
     def mount_fs(self, mnt_folder, user_name, passwd, ip, port):
 
         # Check the existance of the user
@@ -104,7 +104,7 @@ class Api:
         answer = self.connection.recv_messages()
         if answer is not True:
             self.close_connection()
-            raise ServerError('Error in server occured:\n{}'.format(answer))
+            raise ServerError( answer)
         print("Answer is", answer)
 
 

@@ -1,8 +1,7 @@
 #!/usr/bin/python3
 
-from api import ApiServer 
+from application import api
 
 PORT = 50101
-with ApiServer(port=PORT, timeout=0.05, backlog=5) as api_server:
+with api.AplicationApi(port=PORT, timeout=0.05, backlog=5) as api_server:
     api_server.start_server()
-

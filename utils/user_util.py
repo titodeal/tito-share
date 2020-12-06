@@ -1,6 +1,14 @@
 import subprocess
 from subprocess import PIPE
 from . import cmd_util
+import platform
+
+
+def get_home_path():
+    if platform.system() == "Linux":
+        return "/home"
+    elif platform.system() == "Windows":
+        return "C:\\Users"
 
 
 def isuser_exists(user):
