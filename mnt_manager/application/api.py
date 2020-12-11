@@ -3,7 +3,9 @@ import os
 import subprocess
 from subprocess import PIPE
 
-from application import AplicationServer, sshfs_utils, user_util, cmd_util
+# from _sockets.application_server import AplicationServer
+from tito_sockets.application_server import ApplicationServer
+from application import sshfs_utils, user_util, cmd_util
 
 # def benchmark(func):
 #     def wrapper(*args, **kwargs):
@@ -13,7 +15,7 @@ from application import AplicationServer, sshfs_utils, user_util, cmd_util
 #               "".format(func.__name__, time.time() - start))
 #     return wrapper
 
-class AplicationApi(AplicationServer):
+class AplicationApi(ApplicationServer):
     """The class which process client commands"""
 
     @staticmethod
@@ -48,7 +50,7 @@ class AplicationApi(AplicationServer):
 
         # Prepare SSH setup
         sshfolder = "/".join([USER_HOMEPATH, ".ssh"])
-        sshfs_utils.generate_sshkeys(sshfolder)
+#         sshfs_utils.generate_sshkeys(sshfolder)
 
         mnt_point = "/".join([USER_HOMEPATH, "projects"])
         mount, msg = sshfs_utils.mount_sshfs(mnt_folder, mnt_point,
@@ -65,32 +67,25 @@ class AplicationApi(AplicationServer):
     @staticmethod
     def umount_fs(catalog):
 
-        cmd_umnt_point = f"mount -l -t fuse.sshfs | \
-grep {catalog} | cut --delimiter=' ' --fields=3"
-        print("Umount cmd is: ", cmd_umnt_point)
-        umnt_point_proc = subprocess.Popen(cmd_umnt_point,
-                                           stdout=PIPE, shell=True)
-        umnt_point = umnt_point_proc.stdout.readline()
+        cmd_umnt_point = f"mount -l -t fuse.sshfs | "\
+                         f"grep {catalog} | cut --delimiter=' ' --fields=3"
 
-        if not umnt_point:
-            error_msg = \
-                "Error umount: Mount point '{}' not found."\
-                .format(catalog)
-            print(error_msg)
-            return error_msg
+        code, umnt_point, err_msg = cmd_util.run_subprocess(cmd_umnt_point)
+        if code != 0:
+            err_msg = "Error umount: " \
+                      "Mount point '{}' not found.".format(catalog)
+            print(err_msg)
+            return err_msg
 
-        umnt_point = umnt_point.decode().strip()
-        print("Umount point is: ", umnt_point)
+        print("=> Umount point is: ", umnt_point)
+        umount_cmd = f"umount {umnt_point}"
+        code, outs, err_msg = cmd_util.run_subprocess(umount_cmd)
 
-        umount_cmd = ["umount", f"{umnt_point}"]
-        umount_proc = subprocess.run(umount_cmd, stderr=PIPE)
+        if code != 0:
+            err_msg = "!=> Error umount: {} {} ".format(catalog, err_msg)
+            print(err_msg)
+            return err_msg
 
-        print(umount_cmd)
-        if umount_proc.returncode != 0:
-            error_msg = "Error umount: {} {} \
-                        ".format(catalog, umount_proc.stderr)
-            print('!=>', error_msg)
-            return error_msg
         print(f"=> Umount catalog successful {catalog}")
         return True
 

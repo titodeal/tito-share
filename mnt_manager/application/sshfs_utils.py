@@ -70,11 +70,10 @@ def mount_sshfs(mnt_folder, mnt_point, user, passwd, ip, port):
         print(f"=> The mountpoint folder '{mnt_point}'"
               f" has been created\n owner is: {user_name}")
 
-#                  "-oServerAliveCountMax=0", "-oallow_other", "-oreconnect",
     sshfs_cmd = ["sshfs",
-                 "-oallow_other", "-oreconnect",
-                 "-oStrictHostKeyChecking=no,password_stdin",
-                 f"-ouid={uid}", f"-ogid={gid}",
+                 "-oServerAliveCountMax=0", "-oallow_other", "-oreconnect",
+                 "-oPasswordAuthentication=yes", "-oStrictHostKeyChecking=no",
+                 f"-ouid={uid}", f"-ogid={gid}", "-opassword_stdin",
                  f"{user_name}@{ip}:{mnt_folder}", f"{mnt_point}", "-p", f"{port}"]
 
     print("sshfs command is: ", sshfs_cmd)

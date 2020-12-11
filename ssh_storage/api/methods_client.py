@@ -11,17 +11,18 @@ def check_mnt_folder(mnt_folder, user):
 
     mnt_folder = os.path.normpath(mnt_folder)
     if not (os.path.exists(mnt_folder) and os.path.isdir(mnt_folder)):
-        print(f"!=> The folder does not exists or it is not a directory")
+        err_msg = f"!=> The folder does not exists or it is not a directory"
+        return False, err_msg
 
     if not path_check_access(mnt_folder):
-        print(f"!=> The path '{mnt_folder}' not pass the test. ")
-        return
+        msg = (f"!=> The path '{mnt_folder}' not pass the test. ")
+        return False, msg
 
     if not mntfolder_check_permission(mnt_folder, user):
-        print(f"!=> The mnt_folder '{mnt_folder}' not pass the permission test. ")
-        return
-
-    return True
+        msg = (f"!=> The mnt_folder '{mnt_folder}' not pass the permission test. ")
+        print(msg)
+        return False, msg
+    return True, "The mount folder check is successful"
 
 def mntfolder_check_permission(folder, user):
     fld_perm_cmd = f"stat {folder} --printf=%a"
@@ -82,3 +83,17 @@ def path_check_access(path):
     print("=>Checking path access is done successful.")
     return True
 
+
+def ssh_ready(ip, port):
+    code, result, msg = cmd_util.run_subprocess("ssh -V")
+    if code != 0:
+        err_msg = "!=> SSH package not found"
+        return False, err_msg
+    print("=> SSH package is found")
+
+    code, result, msg = cmd_util.run_subprocess(f"nc -z {ip} {port}")
+    if code != 0:
+        err_msg = f"!=>No SSH server at the addres: {ip}:{port}"
+        return False, err_msg
+
+    return True, "The SSH check was successful"
