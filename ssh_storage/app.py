@@ -1,38 +1,66 @@
-#!/usr/bin/python
+import os, sys
+sys.path.append(os.path.abspath(".."))
+sys.path.append(os.path.abspath("../.."))
 
-from api.api_client import Api
 from tito_sockets.application_server import ApplicationServer
+from mnt_manager.mnt_manager_client import MountManager
 
-IP_SSH = "192.168.88.163"
-PORT_SSH = 22
-MNT_FOLDER = "/home/new_user/folder/for_other"
+import config as conf
 
-IP_SERVER = "192.168.88.163"
-PORT_SERVER = 50101
+from utils import user_util
 
 
-class Application(ApplicationServer):
-    def __init__(self, port, timeout=0.2):
-        super(Application, self).__init__(port=port, timeout=timeout)
+class StorageServer(ApplicationServer):
+    def __init__(self, port, timeout):
+        super(StorageServer, self).__init__(port=port, timeout=timeout)
 
-        self.api = Api(IP_SERVER, PORT_SERVER, timeout=None)
-        self.api.set_connection()
+        self.mnt_manager = MountManager(conf.MNT_MANAGER_ADDRESS,
+                               conf.MNT_MANAGER_PORT,
+                               timeout=None)
+        self.mnt_manager.set_connection()
+        self.verified_connections = set()
 
-    def handle_massage(self, msg):
-        method = getattr(self.api, msg.get("method"))
+    def handle_massage(self, msg, client):
+        if msg.get("method") == "get_credentials":
+            return self.get_credentials(msg.get("args"))
+        else:
+            conn_valid_status = self.verify_connection(clent)
+            if not conn_valid_status[0]:
+                return conn_valid_status
+        return (True, "TEST VERIFICATION FINISHED")
+        method = getattr(self.mnt_manager, msg.get("method"))
         return method(*msg.get("args"))
+
+    def get_credentials(self, client):
+        user_exists =  user_util.isuser_exists(user)
+        if not user_exists[0]:
+            return user_exists
+        passwd_valid = user_util.check_userpasswd(user, passwd)
+        if not passwd_valid[0]:
+            return passwd_valid
+        self.verify_connection.add(id(client), client.getpeername())
+        return (True, "=> Verification successfull")
+
+    def verify_connection(self, client):
+        if not(id(client), client.getpeername()) in self.verify_connetion:
+            answer = "=> Verification faild."
+            return (False, answer)
+        msg =  "=> Verification successfull."
+        print(msg)
+        return (True, msg)
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         if exc_type:
             print("!=> Exception occured: {}".format(exc_type))
         self._finish_server_process()
-        self.api.close_connection()
+        self.mnt_manager.close_connection()
 
 
-with Application(port=5055, timeout=0.05) as api:
-    api.start_server()
+if __name__ == "__main__":
+    with StorageServer(port=conf.PORT, timeout=0.05) as server:
+        server.start_server()
 
-# api = Application(port=5055, timeout=0.05)
+# api = StorageServer(port=5055, timeout=0.05)
 # api = api_client.Api(host=IP_SERVER, port=PORT_SERVER, timeout=1)
 # api.mount_fs(MNT_FOLDER, "fed", "123", IP_SSH, PORT_SSH)
 # api.umount_fs(MNT_FOLDER)

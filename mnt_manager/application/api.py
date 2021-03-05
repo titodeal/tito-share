@@ -60,8 +60,13 @@ class AplicationApi(ApplicationServer):
             print(err_msg)
             return err_msg
 
+#         msg = ("=>Mount has been complete successful")
+#         return [True, msg]
+
         print("=>Mount has been complete successful ", msg)
         return True
+
+
 
 
     @staticmethod

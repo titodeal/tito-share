@@ -8,7 +8,6 @@ from utils import user_util, cmd_util
 
 
 def check_mnt_folder(mnt_folder, user):
-
     mnt_folder = os.path.normpath(mnt_folder)
     if not (os.path.exists(mnt_folder) and os.path.isdir(mnt_folder)):
         err_msg = f"!=> The folder does not exists or it is not a directory"

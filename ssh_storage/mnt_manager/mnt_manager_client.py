@@ -2,7 +2,7 @@ import time
 
 from tito_sockets import socket_client
 from utils import user_util
-from api import methods_client
+from mnt_manager import methods_client
 
 
 def benchmark(func):
@@ -18,12 +18,11 @@ class ServerError(Exception):
     pass
 
 
-class Api(socket_client.SocketClient):
+class MountManager(socket_client.SocketClient):
     def __init__(self, host, port, timeout=None):
-        super(Api, self).__init__(host=host, port=port, timeout=timeout)
+        super(MountManager, self).__init__(host=host, port=port, timeout=timeout)
 
     def _send_reques(self, method_name, args):
-        """docstring for send_reques"""
         message = {"method": f"{method_name}", "args": args}
         self.send_data(message)
         response = self.recv_messages()
