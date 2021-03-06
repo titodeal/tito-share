@@ -3,6 +3,7 @@ import time
 from tito_sockets import socket_client
 from utils import user_util
 from mnt_manager import methods_client
+import config
 
 
 def benchmark(func):
@@ -29,14 +30,15 @@ class MountManager(socket_client.SocketClient):
         print(f"=> Method process: '{method_name}' => Response is {response}")
         return response
 
-
 #     @benchmark
-    def mount_fs(self, mnt_folder, user_name, passwd, ip, port):
+    def mount_fs(self, mnt_folder, user_name, passwd): #  , ip, port):
+        ip = config.EXTERNAL_SSH_ADDRESS
+        port = config.EXTERNAL_SSH_PORT
 
         print("=> Start moiunting fs")
 
         # Check the existance of the user
-        ser_exists, msg = user_util.isuser_exists(user_name)
+        user_exists, msg = user_util.isuser_exists(user_name)
         if not user_exists:
             err_msg = (f"!=>The '{user_name}' does not exits: ", msg)
             print(err_msg)
