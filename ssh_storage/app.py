@@ -22,27 +22,26 @@ class StorageServer(ApplicationServer):
 
     def handle_massage(self, msg, client):
         if msg.get("method") == "get_credentials":
-            return self.get_credentials(msg.get("args"))
+            return self.get_credentials(client, *msg.get("args"))
         else:
-            conn_valid_status = self.verify_connection(clent)
+            conn_valid_status = self.verify_connection(client)
             if not conn_valid_status[0]:
                 return conn_valid_status
-        return (True, "TEST VERIFICATION FINISHED")
-        method = getattr(self.mnt_manager, msg.get("method"))
+        print("TEST VERIFICATION FINISHED")
+        method = getattr(self.mnt_manager, msg["method"])
         return method(*msg.get("args"))
 
-    def get_credentials(self, client):
-        user_exists =  user_util.isuser_exists(user)
+    def get_credentials(self, client, user, passwd):
+        user_exists = user_util.isuser_exists(user)
         if not user_exists[0]:
             return user_exists
         passwd_valid = user_util.check_userpasswd(user, passwd)
         if not passwd_valid[0]:
             return passwd_valid
-        self.verify_connection.add(id(client), client.getpeername())
-        return (True, "=> Verification successfull")
+        self.verified_connections.add((id(client), client.getpeername()))
 
     def verify_connection(self, client):
-        if not(id(client), client.getpeername()) in self.verify_connetion:
+        if not(id(client), client.getpeername()) in self.verified_connections:
             answer = "=> Verification faild."
             return (False, answer)
         msg =  "=> Verification successfull."

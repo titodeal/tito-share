@@ -36,7 +36,7 @@ class MountManager(socket_client.SocketClient):
         print("=> Start moiunting fs")
 
         # Check the existance of the user
-        user_exists, msg = user_util.isuser_exists(user_name)
+        ser_exists, msg = user_util.isuser_exists(user_name)
         if not user_exists:
             err_msg = (f"!=>The '{user_name}' does not exits: ", msg)
             print(err_msg)
